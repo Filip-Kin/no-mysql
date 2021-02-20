@@ -19,7 +19,8 @@ export interface DatabaseOptions {
 class DatabaseClass {
   private _cache: NodeCache | null;
   private _options: DatabaseOptions;
-  private _conn: Connection
+  private _conn: Connection;
+  private _tables: Record<string, Table<any>> = {};
 
   constructor(options: DatabaseOptions, tables: any) {
     this._options = options;
@@ -29,7 +30,14 @@ class DatabaseClass {
     this._conn = createConnection(this._options);
 
     Object.keys(tables).forEach((name) => {
-      (this as any)[name] = new Table(name, this as any, tables[name]);
+      if (name.startsWith('_')) {
+        throw new Error(`Table name '${name}' cannot start with an _`);
+      }
+      if (name in DatabaseClass.prototype) {
+        throw new Error(`Table name '${name}' cannot conflict with a method of the same name on the Database class.`);
+      }
+      this._tables[name] = new Table(name, this as any, tables[name]);
+      (this as any)[name] = this._tables[name];
     })
   }
 
