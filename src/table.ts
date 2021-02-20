@@ -40,11 +40,13 @@ export class Table<S extends Schema> {
   static JSON = <Data>() => 'json' as any as JSONData<Data>;
 
   private name: string;
+  private db: Database;
   private primaryKey!: string;
   private types: InternalParsedSchema;
 
-  constructor(name: string, database: Database<any>, schema: S) {
+  constructor(name: string, database: Database, schema: S) {
     this.name = name;
+    this.db = database;
     this.types = {};
     Object.keys(schema).forEach(key => {
       const value = schema[key];
