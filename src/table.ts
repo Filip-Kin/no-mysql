@@ -1,3 +1,4 @@
+import { RowDataPacket } from "mysql2";
 import { Database } from "./database";
 import { GetPrimaryKey, InternalParsedSchema, JSONData, MySQLDeserializationMap, MySQLSerializationMap, SchemaValue, SchemaPartial, Schema, SchemaTypeToValue } from "./schema-types";
 
@@ -7,11 +8,11 @@ import { GetPrimaryKey, InternalParsedSchema, JSONData, MySQLDeserializationMap,
 const mysqlDeserializationMap: MySQLDeserializationMap = {
   // int: (value) => value,
   // double: (value) => value,
-  // boolean: (value) => value,
+  boolean: (value) => (value > 0),
   date: (value) => new Date(value),
-  // dateTime: (value) => value,
+  dateTime: (value) => new Date(value),
   // timeStamp: (value) => value,
-  // time: (value) => value,
+  time: (value) => new Date('1970-01-01 ' + value),
   // text: (value) => value,
   // mediumText: (value) => value,
   // longText: (value) => value,
@@ -24,10 +25,10 @@ const mysqlSerializationMap: MySQLSerializationMap = {
   // int: (value) => value,
   // double: (value) => value,
   // boolean: (value) => value,
-  // date: (value) => value,
-  // dateTime: (value) => value,
+  date: (value) => `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()}`,
+  dateTime: (value) => `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()} ${value.getHours()}:${value.getMinutes()}:${value.getSeconds()}`,
   // timeStamp: (value) => value,
-  // time: (value) => value,
+  time: (value) => `${value.getHours()}:${value.getMinutes()}:${value.getSeconds()}`,
   // text: (value) => value,
   // mediumText: (value) => value,
   // longText: (value) => value,
@@ -75,29 +76,52 @@ export class Table<S extends Schema> {
       this.types[key] = obj;
     });
 
-    if(!this.primaryKey) {
+    if (!this.primaryKey) {
       throw new Error("A Primary Key is required.");
     }
+
+    //await this.db.__query(`CREATE TABLE ? IF NOT EXISTS`)
   }
 
-  async get(primaryKey: SchemaTypeToValue<S[GetPrimaryKey<S>]>): Promise<SchemaValue<S>> {
-    throw new Error("Method not implemented.");
+  private deserializeRow(row: RowDataPacket): SchemaValue<S> {
+    for (let k in row) {
+      row[k] = (mysqlDeserializationMap[this.types[k].type] || ((x: any) => x))(row[k])
+    }
+    return <SchemaValue<S>>row;
+  }
+
+  private serializeRow(row: SchemaValue<S> | SchemaPartial<S>): Object {
+    for (let k in row) {
+      row[k] = (mysqlSerializationMap[this.types[k].type] || ((x: any) => x))(row[k])
+    }
+    return row;
+  }
+
+  async get(primaryKey: SchemaTypeToValue<S[GetPrimaryKey<S>]>): Promise<SchemaValue<S> | null> {
+    let results = <RowDataPacket[]>await this.db._query(`SELECT * FROM ${this.name} WHERE ? = ?;`, [this.primaryKey, primaryKey]);
+    if (results.length < 0) return null;
+    return this.deserializeRow(results[0]);
   }
 
   async getAll<K extends Exclude<keyof S, GetPrimaryKey<S>>>(key: K, value: SchemaTypeToValue<S[K]>): Promise<SchemaValue<S>[]> {
-    throw new Error("Method not implemented.");
+    let results = <RowDataPacket[]>await this.db._query(`SELECT * FROM ${this.name} WHERE ? = ?;`, [key, value]);
+    let newResults = [];
+    for (let row of results) {
+      newResults.push(this.deserializeRow(row));
+    }
+    return newResults;
   }
 
   async insert(object: SchemaValue<S>): Promise<void> {
-    throw new Error("Method not implemented.");
+    await this.db._query(`INSERT INTO ${this.name} SET ?`, [this.serializeRow(object)]);
   }
 
   async update(object: SchemaPartial<S>): Promise<void> {
-    throw new Error("Method not implemented.");
+    await this.db._query(`UPDATE ${this.name} SET ? WHERE ? = ?`, [this.serializeRow(object), this.primaryKey, object[this.primaryKey]]);
   }
 
-  async delete(id: GetPrimaryKey<S>): Promise<void> {
-    throw new Error("Method not implemented.");
+  async delete(primaryKey: GetPrimaryKey<S>): Promise<void> {
+    await this.db._query(`DELETE FROM ${this.name} WHERE ? = ?;`, [this.name, this.primaryKey, primaryKey]);
   }
 
 }

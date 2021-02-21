@@ -1,5 +1,4 @@
-import { createConnection, OkPacket, ResultSetHeader, RowDataPacket } from 'mysql2';
-import Connection from 'mysql2/typings/mysql/lib/Connection';
+import { Connection, createConnection, OkPacket, ResultSetHeader, RowDataPacket } from 'mysql2';
 import Query from 'mysql2/typings/mysql/lib/protocol/sequences/Query';
 import NodeCache from 'node-cache';
 import { Schema } from './schema-types';
@@ -27,7 +26,8 @@ class DatabaseClass {
     this._options.cacheTTL = options.cacheTTL || 300
     this._cache = (this._options.cacheTTL > -1) ? new NodeCache({ stdTTL: options.cacheTTL }) : null;
 
-    this._conn = createConnection(this._options);
+    delete options.cacheTTL;
+    this._conn = createConnection(options);
 
     Object.keys(tables).forEach((name) => {
       if (name.startsWith('_')) {
@@ -42,9 +42,9 @@ class DatabaseClass {
   }
 
   // Exposes query function for advanced used but turns it into a Promise instead of callback
-  private _query(sql: string, placeholderValues: any[]): Promise<Query.QueryError | RowDataPacket[] | RowDataPacket[][] | OkPacket | OkPacket[] | ResultSetHeader> {
+  private __query(sql: string, placeholderValues: any[]): Promise<SqlResult> {
     return new Promise((resolve, reject) => {
-      this._conn.query(sql, placeholderValues, (err, results) => {
+      this._conn.query(sql, placeholderValues, (err: Query.QueryError | null, results: SqlResult) => {
         if (err) return reject(err);
         resolve(results);
       });
@@ -52,10 +52,10 @@ class DatabaseClass {
   }
 
   // query function that's cached if cache is enabled
-  public query(sql: string, placeholderValues: any[]): Promise<Query.QueryError | RowDataPacket[] | RowDataPacket[][] | OkPacket | OkPacket[] | ResultSetHeader> {
+  public _query(sql: string, placeholderValues: any[]): Promise<SqlResult> {
     return new Promise(async (resolve, reject) => {
       // if select in cache, return cache
-      this._query(sql, placeholderValues)
+      this.__query(sql, placeholderValues)
         .then(result => {
           resolve(result);
           // remove if delete/update/insert and in cache
@@ -67,9 +67,11 @@ class DatabaseClass {
 
   // close the mysql connection
   public close() {
-
+    this._conn.destroy();
   }
 }
+
+export type SqlResult = RowDataPacket[] | RowDataPacket[][] | OkPacket | OkPacket[] | ResultSetHeader;
 
 export type DatabaseConstructor = {
   new<S extends Record<string, Schema>>(options: DatabaseOptions, tables: S): Database<S>;
