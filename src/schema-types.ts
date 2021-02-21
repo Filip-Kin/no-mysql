@@ -60,17 +60,15 @@ export type SchemaTypeToValue<K extends any>
   : K;
 export type GetPrimaryKey<S extends Schema> = { [K in keyof S]: S[K] extends `primary ${infer X}` ? K : never }[keyof S];
 export type MySQLDeserializer<V> = (value: any) => V;
-export type MySQLDeserializationMap = Partial<
-  { json: MySQLDeserializer<any> }
+export type MySQLDeserializationMap
+  = { json: MySQLDeserializer<any> }
   & { [K in keyof SchemaTypeMap]: MySQLDeserializer<SchemaTypeMap[K]> }
   & { [K in keyof SchemaTypeArrayMap]: MySQLDeserializer<SchemaTypeArrayMap[K]['type']> }
->;
 export type MySQLSerializer<V> = (value: V) => any;
-export type MySQLSerializationMap = Partial<
-  { json: MySQLSerializer<any> }
+export type MySQLSerializationMap
+  = { json: MySQLSerializer<any> }
   & { [K in keyof SchemaTypeMap]: MySQLSerializer<SchemaTypeMap[K]> }
   & { [K in keyof SchemaTypeArrayMap]: MySQLSerializer<SchemaTypeArrayMap[K]['type']> }
->;
 export type InternalParsedSchema = Record<string, {
   type: keyof SchemaTypeMap | keyof SchemaTypeArrayMap | 'json',
   args: any[],
