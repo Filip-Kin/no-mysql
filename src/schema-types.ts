@@ -18,8 +18,8 @@ export interface SchemaTypeArrayMap {
 export type PrimaryKeyType = 'int';
 
 // DARK MAGIC WITH TYPES
-export type Flat<X> = X extends any ? X : never;
-export type FPick<T, K extends keyof T> = T extends any ? {
+export type Flat<X> = X extends X ? X : never;
+export type FPick<T, K extends keyof T> = T extends T ? {
   [P in K]: T[P];
 } : never;
 export type FPartial<T> = T extends any ? {

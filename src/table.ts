@@ -6,34 +6,34 @@ import { GetPrimaryKey, InternalParsedSchema, JSONData, MySQLDeserializationMap,
 
 // mysql value --> javascript value
 const mysqlDeserializationMap: MySQLDeserializationMap = {
-  // int: (value) => value,
-  // double: (value) => value,
+  int: (value) => value,
+  double: (value) => value,
   boolean: (value) => (value > 0),
   date: (value) => new Date(value),
   dateTime: (value) => new Date(value),
-  // timeStamp: (value) => value,
+  timeStamp: (value) => value,
   time: (value) => new Date('1970-01-01 ' + value),
-  // text: (value) => value,
-  // mediumText: (value) => value,
-  // longText: (value) => value,
-  // varChar: (value) => value,
-  // char: (value) => value,
+  text: (value) => value,
+  mediumText: (value) => value,
+  longText: (value) => value,
+  varChar: (value) => value,
+  char: (value) => value,
   json: (value) => JSON.parse(value),
 }
 // javascript value --> mysql value
 const mysqlSerializationMap: MySQLSerializationMap = {
-  // int: (value) => value,
-  // double: (value) => value,
-  // boolean: (value) => value,
+  int: (value) => value,
+  double: (value) => value,
+  boolean: (value) => value,
   date: (value) => `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()}`,
   dateTime: (value) => `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()} ${value.getHours()}:${value.getMinutes()}:${value.getSeconds()}`,
-  // timeStamp: (value) => value,
+  timeStamp: (value) => value,
   time: (value) => `${value.getHours()}:${value.getMinutes()}:${value.getSeconds()}`,
-  // text: (value) => value,
-  // mediumText: (value) => value,
-  // longText: (value) => value,
-  // varChar: (value) => value,
-  // char: (value) => value,
+  text: (value) => value,
+  mediumText: (value) => value,
+  longText: (value) => value,
+  varChar: (value) => value,
+  char: (value) => value,
   json: (value) => JSON.stringify(value),
 }
 
@@ -42,7 +42,7 @@ export class Table<S extends Schema> {
 
   private name: string;
   private db: Database;
-  private primaryKey!: string;
+  private primaryKey!: keyof S;
   private types: InternalParsedSchema;
 
   constructor(name: string, database: Database, schema: S) {
@@ -80,7 +80,7 @@ export class Table<S extends Schema> {
       throw new Error("A Primary Key is required.");
     }
 
-    //await this.db.__query(`CREATE TABLE ? IF NOT EXISTS`)
+    //await this.db._query(`CREATE TABLE ? IF NOT EXISTS`)
   }
 
   private deserializeRow(row: RowDataPacket): SchemaValue<S> {
@@ -90,9 +90,11 @@ export class Table<S extends Schema> {
     return <SchemaValue<S>>row;
   }
 
-  private serializeRow(row: SchemaValue<S> | SchemaPartial<S>): Object {
+  private serializeRow(row: SchemaValue<S> | SchemaPartial<S>): any {
+    const result: any = {};
     for (let k in row) {
-      row[k] = (mysqlSerializationMap[this.types[k].type] || ((x: any) => x))(row[k])
+      // @ts-ignore I do not know why this error happens but it does.
+      result[k] = mysqlSerializationMap[this.types[k].type](row[k])
     }
     return row;
   }
@@ -117,7 +119,7 @@ export class Table<S extends Schema> {
   }
 
   async update(object: SchemaPartial<S>): Promise<void> {
-    await this.db._query(`UPDATE ${this.name} SET ? WHERE ? = ?`, [this.serializeRow(object), this.primaryKey, object[this.primaryKey]]);
+    await this.db._query(`UPDATE ${this.name} SET ? WHERE ? = ?`, [this.serializeRow(object), this.primaryKey, (object as any)[this.primaryKey]]);
   }
 
   async delete(primaryKey: GetPrimaryKey<S>): Promise<void> {
