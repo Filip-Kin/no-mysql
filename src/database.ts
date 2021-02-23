@@ -26,8 +26,13 @@ class DatabaseClass {
     this._options.cacheTTL = options.cacheTTL || 300
     this._cache = (this._options.cacheTTL > -1) ? new NodeCache({ stdTTL: options.cacheTTL }) : null;
 
-    delete options.cacheTTL;
-    this._conn = createConnection(options);
+    this._conn = createConnection({
+      host: this._options.host,
+      port: this._options.port || undefined,
+      user: this._options.user,
+      password: this._options.password || undefined,
+      database: this._options.database
+    });
 
     Object.keys(tables).forEach((name) => {
       if (name.startsWith('_')) {
@@ -42,9 +47,9 @@ class DatabaseClass {
   }
 
   // Exposes query function for advanced used but turns it into a Promise instead of callback
-  private __query(sql: string, placeholderValues: any[]): Promise<SqlResult> {
+  public __query(sql: string, placeholderValues?: any[]): Promise<SqlResult> {
     return new Promise((resolve, reject) => {
-      this._conn.query(sql, placeholderValues, (err: Query.QueryError | null, results: SqlResult) => {
+      this._conn.query(sql, placeholderValues || [], (err: Query.QueryError | null, results: SqlResult) => {
         if (err) return reject(err);
         resolve(results);
       });
@@ -52,10 +57,10 @@ class DatabaseClass {
   }
 
   // query function that's cached if cache is enabled
-  public _query(sql: string, placeholderValues: any[]): Promise<SqlResult> {
+  public _query(sql: string, placeholderValues?: any[]): Promise<SqlResult> {
     return new Promise(async (resolve, reject) => {
       // if select in cache, return cache
-      this.__query(sql, placeholderValues)
+      this.__query(sql, placeholderValues || [])
         .then(result => {
           resolve(result);
           // remove if delete/update/insert and in cache

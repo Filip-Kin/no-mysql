@@ -73,5 +73,6 @@ export type InternalParsedSchema = Record<string, {
   type: keyof SchemaTypeMap | keyof SchemaTypeArrayMap | 'json',
   args: any[],
   primary?: boolean,
+  unique?: boolean,
   optional?: boolean
 }>;

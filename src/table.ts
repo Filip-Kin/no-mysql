@@ -1,4 +1,5 @@
 import { RowDataPacket } from "mysql2";
+import { EventEmitter } from 'events';
 import { Database } from "./database";
 import { GetPrimaryKey, InternalParsedSchema, JSONData, MySQLDeserializationMap, MySQLSerializationMap, SchemaValue, SchemaPartial, Schema, SchemaTypeToValue } from "./schema-types";
 
@@ -49,6 +50,7 @@ export class Table<S extends Schema> {
     this.name = name;
     this.db = database;
     this.types = {};
+
     Object.keys(schema).forEach(key => {
       const value = schema[key];
       const obj = {} as InternalParsedSchema[string];
@@ -80,7 +82,22 @@ export class Table<S extends Schema> {
       throw new Error("A Primary Key is required.");
     }
 
-    //await this.db._query(`CREATE TABLE ? IF NOT EXISTS`)
+    let createTableTypes = [];
+    for (let f in this.types) {
+      createTableTypes.push(Table.fieldToSQL(f, this.types[f]));
+    }
+    createTableTypes.push(`PRIMARY KEY (${this.primaryKey})`);
+
+    this.db.__query(`CREATE TABLE IF NOT EXISTS ${this.name} (\n${createTableTypes.join(',\n')}\n);`);
+  }
+
+  static fieldToSQL(name: string, field: any): string {
+    let sql = `${name} ${field.type}`;
+    if (field.args) sql += `(${field.args.join(', ')})`;
+    if (!field.optional) sql += ' NOT NULL';
+    if (field.unique) sql += ' UNIQUE';
+
+    return sql;
   }
 
   private deserializeRow(row: RowDataPacket): SchemaValue<S> {
