@@ -88,7 +88,7 @@ export class Table<S extends Schema> {
     }
     createTableTypes.push(`PRIMARY KEY (${this.primaryKey})`);
 
-    this.db.__query(`CREATE TABLE IF NOT EXISTS ${this.name} (\n${createTableTypes.join(',\n')}\n);`);
+    this.db.query(`CREATE TABLE IF NOT EXISTS ${this.name} (\n${createTableTypes.join(',\n')}\n);`);
   }
 
   static fieldToSQL(name: string, field: any): string {
@@ -117,13 +117,13 @@ export class Table<S extends Schema> {
   }
 
   async get(primaryKey: SchemaTypeToValue<S[GetPrimaryKey<S>]>): Promise<SchemaValue<S> | null> {
-    let results = <RowDataPacket[]>await this.db._query(`SELECT * FROM ${this.name} WHERE ? = ?;`, [this.primaryKey, primaryKey]);
+    let results = <RowDataPacket[]>await this.db.query(`SELECT * FROM ${this.name} WHERE ? = ?;`, [this.primaryKey, primaryKey]);
     if (results.length < 0) return null;
     return this.deserializeRow(results[0]);
   }
 
   async getAll<K extends Exclude<keyof S, GetPrimaryKey<S>>>(key: K, value: SchemaTypeToValue<S[K]>): Promise<SchemaValue<S>[]> {
-    let results = <RowDataPacket[]>await this.db._query(`SELECT * FROM ${this.name} WHERE ? = ?;`, [key, value]);
+    let results = <RowDataPacket[]>await this.db.query(`SELECT * FROM ${this.name} WHERE ? = ?;`, [key, value]);
     let newResults = [];
     for (let row of results) {
       newResults.push(this.deserializeRow(row));
@@ -132,15 +132,15 @@ export class Table<S extends Schema> {
   }
 
   async insert(object: SchemaValue<S>): Promise<void> {
-    await this.db._query(`INSERT INTO ${this.name} SET ?`, [this.serializeRow(object)]);
+    await this.db.query(`INSERT INTO ${this.name} SET ?`, [this.serializeRow(object)]);
   }
 
   async update(object: SchemaPartial<S>): Promise<void> {
-    await this.db._query(`UPDATE ${this.name} SET ? WHERE ? = ?`, [this.serializeRow(object), this.primaryKey, (object as any)[this.primaryKey]]);
+    await this.db.query(`UPDATE ${this.name} SET ? WHERE ? = ?`, [this.serializeRow(object), this.primaryKey, (object as any)[this.primaryKey]]);
   }
 
   async delete(primaryKey: GetPrimaryKey<S>): Promise<void> {
-    await this.db._query(`DELETE FROM ${this.name} WHERE ? = ?;`, [this.name, this.primaryKey, primaryKey]);
+    await this.db.query(`DELETE FROM ${this.name} WHERE ? = ?;`, [this.name, this.primaryKey, primaryKey]);
   }
 
 }
