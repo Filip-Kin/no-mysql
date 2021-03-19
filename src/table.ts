@@ -1,5 +1,4 @@
 import { RowDataPacket } from "mysql2";
-import { EventEmitter } from 'events';
 import { Database } from "./database";
 import { GetPrimaryKey, InternalParsedSchema, JSONData, MySQLDeserializationMap, MySQLSerializationMap, SchemaValue, SchemaPartial, Schema, SchemaTypeToValue } from "./schema-types";
 

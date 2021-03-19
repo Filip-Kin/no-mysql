@@ -15,7 +15,6 @@ export interface SchemaTypeArrayMap {
   varChar: { type: string, args: [ maxLength: number ] },
   char: { type: string, args: [ length: number ] },
 }
-export type PrimaryKeyType = 'int';
 
 // DARK MAGIC WITH TYPES
 export type Flat<X> = X extends X ? X : never;
@@ -29,8 +28,9 @@ export type Schema = Record<string, SchemaType>;
 export type SchemaType = keyof SchemaTypeMap
   | { [K in keyof SchemaTypeArrayMap]: [type: K, ...args: SchemaTypeArrayMap[K]['args']]}[keyof SchemaTypeArrayMap]
   | { [K in keyof SchemaTypeArrayMap]: [type: `optional ${K}`, ...args: SchemaTypeArrayMap[K]['args']]}[keyof SchemaTypeArrayMap]
+  | { [K in keyof SchemaTypeArrayMap]: [type: `primary ${K}`, ...args: SchemaTypeArrayMap[K]['args']]}[keyof SchemaTypeArrayMap]
   | `optional ${keyof SchemaTypeMap}`
-  | `primary ${PrimaryKeyType}`
+  | `primary ${keyof SchemaTypeMap}`
   | JSONData<any>;
 // JSONData is a fake data structure used only for type checking,
 // the actual form of json data schema is just the string 'json'
